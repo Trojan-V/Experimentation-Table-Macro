@@ -1,0 +1,320 @@
+$${
+
+// ### MINECRAFT VERSION: 1.12.2
+
+// ### REQUIREMENTS:
+// ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// ### Mods and Installers:
+// ### forge-1.12.2-14.23.5.2854-installer.jar                       ---  https://files.minecraftforge.net/maven/net/minecraftforge/forge/1.12.2-14.23.5.2854/forge-1.12.2-14.23.5.2854-installer.jar
+// ### liteloader-installer-1.12.2-00-SNAPSHOT.exe                   ---  http://jenkins.liteloader.com/job/LiteLoaderInstaller%201.12.2/lastSuccessfulBuild/artifact/build/libs/liteloader-installer-1.12.2-00-SNAPSHOT.exe
+// ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// ### Modules: 
+// ### This script requires my Additions Module to be loaded. The source code to the module can be found here: https://github.com/Trojan-V/Additions-Module
+// ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+
+// ### DISCLAIMER! 
+// ### There is a zero width space (ZWSP) between every $​$ because otherwise macromod registers the $​$ as a closing script action, even though it is in a comment.
+// ### To copy paste the comment, remove the ZWSP between each $​​$.
+
+// ### KEYBINDS:
+// ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+// ### Start button    (M): $​${exec("experimentation-table-solver.txt","EXP-TABLE-SOLVER");}$​$
+// ### Stop button     (P): $​${stop(*);log("&7The script &chas been stopped &7through the &cstop button &7input (&dDefault: P&7).");log("");log("&7You can &arestart the script &7again by pressing the &astart button &7you previously defined in your settings (&dDefault&7: &dM&7)");}$​$
+// ----------------------------------------------------------------------------------------------------------------------------------------------------------------------
+
+
+// ### The entire file is running in an infinite loop and will automatically detect valid GUI's that can be solved so far.
+// ### The proper configuration is getting selected if a valid GUI has been found. 
+
+// # Configurations are applied by the following booleans:
+// # boolean: 'superpairs'
+// # boolean: 'ultrasequencer'
+// # boolean: 'chronomatron'
+
+
+
+// # Variables that have to be false at the start of the file, they are set to true/false to control different parts of the script within the file.
+// # Clearing out all variables to make sure that there is no data from previous sessions saved in them.
+
+unset(superpairs);
+unset(ultrasequencer);
+unset(chronomatron);
+unset(#order_of_slots[]);
+unset(#orders[]);
+
+
+// # This part is constantly checking the name of GUI's and if the name matches one of the experimentation table GUI's that can be automatically solved by the bot,
+// # it will set the associated variable to true.
+
+// # ASSOCIATED VARIABLES are the following ones:
+// # boolean: 'superpairs'
+// # boolean: 'ultrasequencer'
+// # boolean: 'chronomatron'
+
+
+title("§3Open the experimentation table!","§7The bot will figure out itself what puzzle it has to solve.",40,60,40);
+
+do;
+
+    getguiname(&name);
+    strip(&name,%&name%);         
+    ifmatches(%&name%,"^Ultrasequencer\s\((Supreme|Transcendent|Metaphysical)\)$");
+        log("&aSuccessfully &7found an &dUltrasequencer&7!");
+        set(ultrasequencer_gui_found);
+
+    else;ifmatches(%&name%,"^Chronomatron\s\((High|Grand|Supreme)\)$");
+        log("&aSuccessfully &7found a &dchronomatron&7!");
+        set(chronomatron_gui_found);
+
+    else;ifmatches(%&name%,"^Superpairs\s\((Beginner|High|Grand|Supreme)\)$");
+    log("&aSuccessfully &7found &dsuperpairs&7!");
+        set(superpairs_gui_found);
+    endif;endif;endif;
+
+
+// # The following part is the script for the chronomatron solver.
+// # The chronomatron solver can be accessed by setting the boolean 'chronomatron' to true. 
+
+if(chronomatron);
+    unsafe;
+        do;    
+            log("&7Remembering the pattern...");
+
+            do;
+                // # Constantly update slot 49 to check if there is a clock in it.
+                // # There is a clock in it when the process of showing what blocks have to be clicked is done and the timer to solve runs. 
+                getslotitem(49,&itemid);
+
+                // # This checking and putting into array process runs as long as there is no clock in slot 49. Once there is a clock, the checking process is done. 
+                // # Check slots where the blocks to click are in if they are enchanted. If they are enchanted, the slot-number gets put into the array #order_of_slots[].
+                // # #order_of_slots[] is used afterwards within a foreach-->next loop. The order to click matches because put inserts the value into the first empty index of an array.
+                // # The indexes of the array are getting filled from the first index and then so on. A foreach-->next loop starts at the first index and stops after the last index, so the order can be restored.
+                // # Within the foreach-->next loop, the slotclicks take part and a wait is added after them to make sure the bot doesn't click too fast, which would cause a fail.
+                // # After the slotclicks have been finished, the array is getting cleared to make sure the next pattern of blocks to click can be stored correctly.
+
+                // # At the end of each cycle of these loops, the chest-name is being checked by using 'getchestname(&name)'.
+                // # If the chest-name does not match a valid nanem anymore, it will break the loop and stop the solving process. 
+                // # If that happens, the file is still running in the background and will constantly update the chest-name to check for a valid GUi again that can be solved.
+
+                for(#i,28,34);
+                    getslotitemenchants(%#i%,,,,&enchants);
+                    if(&enchants != "None");
+                        put(#order_of_slots[],%#i%);               
+                        wait(18t);   // # This wait is added to prevent an enchanted block in the slot getting "double-checked" and getting put several times into the array.          
+                    endif;
+                next;
+
+                if(GUI != "GUICHEST");
+                    break;
+                endif;
+            until(&itemid == "clock");
+
+            wait(5t);                   
+            log("&aRemembered the pattern.");
+            log("&7Clicking the items...");
+
+            foreach(#order_of_slots[],#order_of_slots,#index);
+
+                if(GUI != "GUICHEST");
+                    break;
+                else;  
+                    slotclick(%#order_of_slots%);
+                    wait(18t);
+                endif;
+            next;
+
+            unset(#order_of_slots[]);
+            unset(#order_of_slots);
+            log("&aClicking items done!");  
+
+            getguiname(&name);
+            strip(&name,%&name%);  
+            ifmatches(%&name%,"^Chronomatron\s\((High|Grand|Supreme)\)$");
+            // # Nothing in here because if it still matches the playing process isn't over.    
+            else;
+                break;
+            endif;
+
+            if(GUI != "GUICHEST");
+                break;
+            endif;
+    
+        loop;   // # This loop is getting breaked once the GUI isn't a chronomatron anymore, check regex above in the ifmatches.
+    endunsafe;
+    log("&dChronomatron &7has been &cexited&7.")
+    unset(chronomatron);  
+
+
+// # The following part is the script for the chronomatron solver.
+// # The chronomatron solver can be accessed by setting the boolean 'ultrasequencer' to true. 
+
+elseif(ultrasequencer);
+    unsafe;
+
+        // # The first checking process runs until the boolean 'items_found' is true.
+        // # This boolean will be true once the script successfully found an item in the GUI with some digit as itemname.
+        // # This makes sure that all items are shown in the GUI, because it takes a brief moment until all items that have to be clicked in the right order show up in the GUI.
+        do;
+            unset(items_found);
+                do;
+                    for(#i,10,45);
+                        getslotitemext(%#i%,,,,&item_name);
+                        strip(&item_name_strip,%&item_name%);
+                        ifmatches("%&item_name_strip%","^\d+$");                                                   
+                            set(items_found);
+                        endif;
+                    next;
+
+                    if(GUI != "GUICHEST");
+                        break;
+                    endif;
+                until(items_found);
+                
+
+                // # This checking process will be active once the checking process above has been finished to make sure
+                // # all items in the GUI that have to be clicked have been loaded successfully.
+
+                // # It will loop one time over all ultrasequencer slots and put the items that match a digit into an array.
+                // # To make sure that the order will be right, the number which is returned by the getslotitemext-action within the '&item_name'-variable is converted into an integer.
+                // # Then, this integer will be deducted by 1 to make sure that the item with the item_name '1' also is in the first index of the array, which is '0'.
+                // # The slot in which the item is in will be saved in the value of the index. 
+
+                // # So the slot is saved in the value of the index.
+                // # And the indexes will always be the number in the "&item_name -1".
+
+                // # By doing this, a simple foreach-->next loop can be used afterwards, because a foreach-->next starts at the first index and stops at the last index of an array.
+                // # And because the slots are already stored in the right index, the script can just foreach-->next over the array in succession.
+
+                for(#slot,10,45);
+                    getslotitemext(%#slot%,,,,&item_name);
+                    strip(&item_name,%&item_name%);
+
+                    #order := %&item_name%;
+                    #order = #order - 1;
+   
+                    ifmatches("%&item_name%","^\d+$");        // # Regular Expression match for digits.
+                        #orders[%#order%] = %#slot%;
+                    endif;                                                             
+                next;
+               
+
+               // # This do-->until part has the simple task of doing nothing until there is a clock in slot 49.
+               // # The clock will be in slot 49 once the items can be clicked, and the time you have for remembering the pattern is over.
+            do;
+                getslotitem(49,&itemid);
+
+                if(GUI != "GUICHEST");
+                    break;
+                endif;
+            until(&itemid == "clock");
+
+            log("&aRemembered &7the order!");
+            wait(10t);
+
+            foreach(#orders[],#item,#index);
+                    slotclick(%#item%);
+                    wait(5t); 
+            next;
+            unset(#orders[]);
+
+
+            // # Checking if the chest-name is still a valid GUI, otherwise using 'break' to exit the loop.
+            // # The chest-name will not be valid anymore if either the solver fails to play correctly due to hypixel lagging or if the solving process has been successfully finished.
+            getguiname(&name);
+            strip(&name,%&name%);  
+            ifmatches(%&name%,"^Ultrasequencer\s\((Supreme|Transcendent|Metaphysical)\)$");
+            // # Nothing in here because if it still matches the playing process isn't over.    
+            else;
+                break;
+            endif;
+
+            if(GUI != "GUICHEST");
+                break;
+            endif;
+
+        loop;
+    endunsafe;
+    log("&dUltrasequencer &7has been &cexited&7.")
+    unset(ultrasequencer);
+
+
+
+
+
+
+// # This part is a helping tool for the superpairs-puzzle.
+// # It doesn't solve anything on it's own, but it outputs identical slots within the chat.
+// # If you see the identical value in the chat, you can just click both slots that are shown in the chat behind the value.
+
+
+// # CONDITIONS:
+// # ItemID can't be: "stained_glass_pane" or "stained_glass".
+// # Itemname (from getslotitemext) can't be: "Air" or "unknownName".
+// # ItemID must be: "dye"
+
+// # The items in the superpairs-gui are only getting saved within the array if the proper conditions apply.
+// # The timestamp is used to only output the contents of the array in the chat every three seconds to prevent the chat from getting spammed.
+
+// # The outputted message in chat contains the enchanting xp value and the slot number of each item with the ItemID 'dye'.
+
+elseif(superpairs);
+    unsafe;
+        unset(&array[]);
+        #timestamp = %TIMESTAMP%;
+        #timestamp = #timestamp + 3;
+        do;            
+            for(#i,10,43);
+                getslotitemext(%#i%,&itemid,,,&item_name);
+                if((&itemid != "stained_glass_pane") && (&itemid != "stained_glass") && (&itemid == "dye") && (&item_name != "Air") && (&item_name != "unknownName"));
+                    &array[%#i%] = %&item_name%;
+                endif;
+            next;
+
+
+            // # 'if(&content != "")' has been added because the slot values are saved within the index of this array.
+            // # If this if-statement wouldn't be there, since the foreach-->next iterates over every single index, it would output many blank lines in the chat.
+
+            // # EXAMPLE
+            // # Slot 37 gets saved within the index 36 because the proper conditions apply to it.
+            // # Index 36 is now filled with a value.
+            // # All indexes before index 36 exist now, but are empty.
+            // # So there would be 35 blank lines before the index with the actual value in it will be logged in the chat.
+
+            if(TIMESTAMP > #timestamp);
+                log("");
+                foreach(&array[],&content,#index);
+                    if(&content != "");     
+                        log("&dSlot %#index%&7: &e%&content%");
+                    endif;
+                next;
+                #timestamp = %TIMESTAMP%;
+                #timestamp = #timestamp + 3;  
+            endif;
+
+
+
+            // # Checking if the chest-name is still a valid GUI, otherwise using 'break' to exit the loop.
+            // # The chest-name will not be valid anymore if either the solver fails to play correctly due to hypixel lagging or if the solving process has been successfully finished.
+            getguiname(&name);
+            strip(&name_strip,%&name%);
+            ifmatches(%&name_strip%,"^Superpairs\s\((Beginner|High|Grand|Supreme)\)$");
+            // # Nothing in here because if it still matches the playing process isn't over.
+            else;    
+                break;
+            endif;
+
+            if(GUI != "GUICHEST");
+                break;
+            endif;
+
+        loop;
+    endunsafe;
+    log("&dSuperpairs GUI &chas been exited.");
+    unset(superpairs);
+endif;
+
+loop;
+
+}$$
